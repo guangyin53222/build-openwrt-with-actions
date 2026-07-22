@@ -7,8 +7,8 @@ sed -i 's/192.168.1.1/192.168.100.1/g' package/base-files/files/bin/config_gener
 sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
 
 # 编辑默认的luci显示的固件名称
-sed -i 's/OpenWrt/ARWRT/g' package/base-files/files/bin/config_generate
-#sed -i 's/ImmortalWrt/ZWRT/g' package/base-files/files/bin/config_generate
+#sed -i 's/OpenWrt/ARWRT/g' package/base-files/files/bin/config_generate
+sed -i 's/ImmortalWrt/ARWRT/g' package/base-files/files/bin/config_generate
 
 # 添加额外的软件包，echo 方式和git clone 方式二选一即可
 #echo 'src-git kenzok8 https://github.com/kenzok8/openwrt-packages' >>feeds.conf.default
