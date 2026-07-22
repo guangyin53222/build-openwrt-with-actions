@@ -1,0 +1,13 @@
+config 'global'
+	option	anon_swap	'0'
+	option	anon_mount	'0'
+	option	auto_swap	'1'
+	option	auto_mount	'1'
+	option	delay_root	'5'
+	option	check_fs	'0'
+
+config 'mount'
+	option	target	'/rom'
+	option	uuid	'0551cfe1-131f7df3-b18069aa-35f66a74'
+	option	enabled	'0'
+
