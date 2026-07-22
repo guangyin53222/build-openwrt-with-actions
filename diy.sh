@@ -18,3 +18,16 @@ sed -i 's/ImmortalWrt/ARWRT/g' package/base-files/files/bin/config_generate
 #git clone https://github.com/kenzok8/small.git package/small
 #git clone https://github.com/SunBK201/UA3F.git package/UA3F
 #git clone https://github.com/stevenjoezhang/luci-app-adguardhome.git package/ADGH
+git clone https://github.com/destan19/OpenAppFilter package/OpenAppFilter
+# istore插件
+git clone https://github.com/linkease/istore.git package/luci-app-store
+# 克隆gecoosac插件
+git clone --depth=1 https://github.com/laipeng668/luci-app-gecoosac package/luci-app-gecoosac
+#下载 wan-mac 修改插件
+git clone --depth=1 https://github.com/linkease/openwrt-app-actions tmp/openwrt-app-actions
+mv tmp/openwrt-app-actions/applications/luci-app-wan-mac package/luci-app-wan-mac
+rm -rf tmp/openwrt-app-actions
+# Bandix-plus 流量监控：后端核心程序
+#git clone --depth=1 https://github.com/timsaya/openwrt-bandix-plus package/openwrt-bandix-plus
+# Bandix-plus 流量监控：LuCI前端界面
+#git clone --depth=1 https://github.com/timsaya/luci-app-bandix-plus package/luci-app-bandix-plus
