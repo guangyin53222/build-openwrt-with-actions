@@ -18,9 +18,7 @@ git clone --depth=1 https://github.com/linkease/openwrt-app-actions tmp/openwrt-
 mv tmp/openwrt-app-actions/applications/luci-app-wan-mac package/luci-app-wan-mac
 rm -rf tmp/openwrt-app-actions
 # 添加 luci-app-tcpdump 抓包插件
-rm -rf feeds/tcpdump
-echo "src-git tcpdump https://github.com/KFERMercer/luci-app-tcpdump.git" >> feeds.conf.default
-
+git clone https://github.com/KFERMercer/luci-app-tcpdump.git ./package/luci-app-tcpdump
 # 更新并安装全部插件
 ./scripts/feeds update -a
 ./scripts/feeds install -a
