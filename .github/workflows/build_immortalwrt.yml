@@ -7,7 +7,7 @@ on:
         description: "openWRT 仓库的拥有者 (Owner of openWRT repo)"
         type: string
         required: true
-        default: "chasey-dev"
+        default: "guangyin53222"
       repo:
         description: "openWRT 仓库的名字 (Name of openWRT repo)"
         type: string
