@@ -27,20 +27,6 @@ rm -rf feeds/packages/net/ksmbd-tools
 git clone --depth 1 -b 3.5.4 https://github.com/cifsd-team/ksmbd-tools feeds/packages/net/ksmbd-tools
 
 # ===================== 强制全部组件内置=y =====================
-cat >> .config <<EOF
-# 压缩工具
-CONFIG_xz-utils=y
-# 文件传输curl
-CONFIG_curl=y
-# 应用商店
-CONFIG_PACKAGE_luci-app-store=y
-# KSMBD全套强制内置
-CONFIG_PACKAGE_kmod-fs-ksmbd=y
-CONFIG_PACKAGE_ksmbd-server=y
-CONFIG_PACKAGE_ksmbd-utils=y
-CONFIG_PACKAGE_luci-app-ksmbd=y
-EOF
-
 # 更新并安装全部插件
 ./scripts/feeds update -a
 ./scripts/feeds install -a
