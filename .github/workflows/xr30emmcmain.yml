@@ -107,8 +107,8 @@ jobs:
           repository: "${{inputs.owner}}/${{inputs.repo}}"
           ref: ${{inputs.branch}}
           path: openWRT
-      - name: 复制XR30配置文件到openWRT (Copy .config to openWRT repo)
-        run: cp -f .config openWRT/.config
+      - name: 复制XR30配置文件到openWRT (Copy xr30-emmc.config to openWRT repo)
+        run: cp -f xr30-emmc.config openWRT/.config
       - name: 如果选择了上传 files 大法，则复制 files 目录到 openWRT 仓库 (If you choose to upload the etc files, copy the etc directory to the openWRT repo)
         if: ${{inputs.isFiles == true}}
         run: cp -r files openWRT/files
