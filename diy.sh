@@ -17,16 +17,6 @@ rm -rf tmp/openwrt-app-actions
 # 添加 luci-app-tcpdump 抓包插件
 git clone https://github.com/KFERMercer/luci-app-tcpdump.git ./package/luci-app-tcpdump
 
-# ===================== KSMBD升级3.5.4 同步源码 =====================
-# 修改官方ksmbd内核模块为3.5.4版本
-sed -i 's|PKG_VERSION:=.*|PKG_VERSION:=3.5.4|' package/kernel/ksmbd/Makefile
-sed -i 's|PKG_SOURCE_URL:=.*|PKG_SOURCE_URL:=https://github.com/cifsd-team/ksmbd/archive/refs/tags/3.5.4.tar.gz|' package/kernel/ksmbd/Makefile
-sed -i 's|PKG_HASH:=.*|PKG_HASH:=613c832d4f7e9878d7e87a0d6b4e8d962262985f34f10612f3b07d72f3d81420|' package/kernel/ksmbd/Makefile
-# 同步同版本ksmbd-tools
-rm -rf feeds/packages/net/ksmbd-tools
-git clone --depth 1 -b 3.5.4 https://github.com/cifsd-team/ksmbd-tools feeds/packages/net/ksmbd-tools
-
-# ===================== 强制全部组件内置=y =====================
 # 更新并安装全部插件
 ./scripts/feeds update -a
 ./scripts/feeds install -a
