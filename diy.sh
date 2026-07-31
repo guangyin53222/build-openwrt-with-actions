@@ -72,20 +72,20 @@ else
 fi
 
 # 检查 mk 里是否注册了设备
-if grep -q "cmcc_xr30_emmc" target/linux/mediatek/image/mt7981.mk 2>/dev/null; then
+if grep -q "cmcc_xr30_emmc" target/linux/mediatek/image/filogic.mk 2>/dev/null; then
     echo "  ✅ mk 设备定义存在"
 else
     echo "  ❌ 错误：mt7981.mk 中未找到 cmcc_xr30_emmc"
-    echo "     请将 mt7981-mk-xr30-emmc.mk 的内容追加到 mt7981.mk 末尾"
+    echo "     请将 filogic-mk-xr30-emmc.mk 的内容追加到 filogic.mk 末尾"
     exit 1
 fi
 
 # 检查 base-files 脚本
-if [ -f "target/linux/mediatek/mt7981/base-files/etc/board.d/02_network" ]; then
+if [ -f "target/linux/mediatek/filogic/base-files/etc/board.d/02_network" ]; then
     echo "  ✅ 02_network 存在"
 fi
 
-if [ -f "target/linux/mediatek/mt7981/base-files/lib/preinit/90_extract_caldata" ]; then
+if [ -f "target/linux/mediatek/filogic/base-files/lib/preinit/90_extract_caldata" ]; then
     echo "  ✅ 90_extract_caldata 存在"
 fi
 
