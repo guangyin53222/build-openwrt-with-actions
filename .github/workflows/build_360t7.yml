@@ -1,0 +1,199 @@
+name: 🚀 编译 ImmortalWrt for 360T7
+
+on:
+  workflow_dispatch:
+    inputs:
+      multithreading:
+        description: "开启多线程编译 (推荐)"
+        type: boolean
+        default: true
+      ssh:
+        description: "SSH 连接编译环境 (手动 menuconfig)"
+        type: boolean
+        default: false
+      isFiles:
+        description: "使用 files 大法 (保留 /etc 配置)"
+        type: boolean
+        default: false
+
+env:
+  REPO_OWNER: padavanonly
+  REPO_NAME: immortalwrt-mt798x-6.6
+  REPO_BRANCH: openwrt-24.10-6.6
+  DEVICE_NAME: 360T7
+  FIRMWARE_TYPE: immortalwrt-mt798x-6.6
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    name: 🔥 编译 360T7 固件
+
+    steps:
+      # ========== 1. 显示初始磁盘空间 ==========
+      - name: 💾 显示磁盘空间 (清理前)
+        run: |
+          echo "====== Runner 初始磁盘空间 ======"
+          df -hT
+          echo "====== Runner 硬件信息 ======"
+          cat /proc/cpuinfo | grep "model name" | head -1
+          free -h
+
+      # ========== 2. 清理磁盘空间 ==========
+      - name: 🧹 清理系统垃圾释放空间
+        uses: "hugoalh/disk-space-optimizer-ghaction@v0.8.1"
+        with:
+          operate_sudo: "True"
+          general_include: ".+"
+          general_exclude: |-
+            ^GCC$
+            ^G\+\+$
+            Clang
+            LLVM
+          docker_include: ".+"
+          docker_prune: "True"
+          docker_clean: "True"
+          apt_prune: "True"
+          apt_clean: "True"
+          homebrew_prune: "True"
+          homebrew_clean: "True"
+          npm_prune: "True"
+          npm_clean: "True"
+          os_swap: "True"
+
+      - name: 💽 最大化构建空间
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 3072
+          swap-size-mb: 1
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-docker-images: "true"
+
+      - name: 💾 显示磁盘空间 (清理后)
+        run: |
+          echo "====== 清理后磁盘空间 ======"
+          df -hT
+
+      # ========== 3. 安装编译依赖 ==========
+      - name: 📦 安装编译依赖
+        run: |
+          export TMPDIR=$RUNNER_TEMP
+          sudo mkdir -p $TMPDIR
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo rm -rf /var/cache/apt/*
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            ack antlr3 asciidoc autoconf automake autopoint binutils bison \
+            build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler \
+            ecj fastjar flex gawk gettext gcc-multilib g++-multilib git gnutls-dev \
+            gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev \
+            libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
+            libncurses-dev libpython3-dev libreadline-dev libssl-dev libtool \
+            libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano ninja-build \
+            p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply \
+            python3-docutils python3-pyelftools qemu-utils re2c rsync scons \
+            squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim \
+            wget xmlto xxd zlib1g-dev zstd
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+
+      # ========== 4. 克隆仓库 ==========
+      - name: 📥 克隆构建脚本仓库
+        uses: actions/checkout@v4
+
+      - name: 📥 克隆 ImmortalWrt 源码 (padavanonly/mt798x-6.6)
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}"
+          ref: ${{ env.REPO_BRANCH }}
+          path: openWRT
+
+      # ========== 5. 复制配置文件 ==========
+      - name: 📋 复制 .config 和 diy.sh 到源码目录
+        run: cp -f .config diy.sh openWRT/
+
+      - name: 📂 复制 files 目录 (可选)
+        if: ${{ inputs.isFiles == true }}
+        run: cp -r files openWRT/files
+
+      # ========== 6. 执行 diy.sh ==========
+      - name: 🔧 执行 diy.sh (加载360T7配置 + 安装插件)
+        working-directory: openWRT
+        run: |
+          chmod +x diy.sh
+          ./diy.sh
+
+      # ========== 7. 更新 feeds ==========
+      - name: 📡 更新并安装 feeds
+        working-directory: openWRT
+        run: ./scripts/feeds update -a && ./scripts/feeds install -a
+
+      # ========== 8. 生成最终 .config ==========
+      - name: ⚙️ 生成最终 .config (make defconfig)
+        working-directory: openWRT
+        run: make defconfig
+
+      - name: 📋 显示最终 .config 关键配置
+        working-directory: openWRT
+        run: |
+          echo "====== 关键配置项 ======"
+          grep -E "CONFIG_TARGET_|CONFIG_PACKAGE_luci" .config | head -40
+
+      # ========== 9. SSH 调试 (可选) ==========
+      - name: 🔐 SSH 连接编译环境 (限时15分钟)
+        if: ${{ inputs.ssh == true }}
+        uses: mxschmitt/action-tmate@v3
+
+      - name: 📤 上传编译前配置 (SSH模式)
+        if: ${{ inputs.ssh == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-before-build
+          path: |
+            openWRT/.config
+            openWRT/feeds.conf.default
+          include-hidden-files: true
+
+      # ========== 10. 编译 ==========
+      - name: 🔨 多线程编译
+        if: ${{ inputs.multithreading == true }}
+        working-directory: openWRT
+        run: make -j$(nproc) V=s
+
+      - name: 🔨 单线程编译
+        if: ${{ inputs.multithreading == false }}
+        working-directory: openWRT
+        run: make -j1 V=s
+
+      # ========== 11. 整理固件文件 ==========
+      - name: 📁 整理固件文件
+        working-directory: openWRT
+        run: |
+          mkdir -p ../firmware
+          # 360T7 编译产物
+          find bin/targets -name "*360t7*" -exec cp {} ../firmware/ \;
+          find bin/targets -name "*qihoo*" -exec cp {} ../firmware/ \;
+          # 也复制所有产物以防万一
+          find bin/targets -name "*.bin" -exec cp {} ../firmware/ \;
+          find bin/targets -name "*.itb" -exec cp {} ../firmware/ \;
+          echo "====== 固件文件列表 ======"
+          ls -lh ../firmware/
+
+      # ========== 12. 上传固件 ==========
+      - name: 📤 上传 360T7 固件
+        uses: actions/upload-artifact@v4
+        with:
+          name: immortalwrt-360t7-${{ env.REPO_BRANCH }}
+          path: firmware/
+          retention-days: 30
+
+      # ========== 13. 上传完整编译产物 ==========
+      - name: 📤 上传完整 targets 目录
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-targets-360t7
+          path: openWRT/bin/targets
+          retention-days: 7
