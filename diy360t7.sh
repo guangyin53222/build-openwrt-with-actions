@@ -44,6 +44,9 @@ sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/M
 
 # ========== 6. 克隆第三方插件 ==========
 echo ">>> 克隆第三方插件..."
+# store
+rm -rf package/luci-app-store
+git clone --depth=1 https://github.com/linkease/istore.git package/luci-app-store
 
 # OpenAppFilter（锁 v6.1.8 tag）
 rm -rf package/OpenAppFilter
