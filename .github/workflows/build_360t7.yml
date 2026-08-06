@@ -112,19 +112,19 @@ jobs:
           path: openWRT
 
       # ========== 5. 复制配置文件 ==========
-      - name: 📋 复制 .config 和 diy.sh 到源码目录
-        run: cp -f .config diy.sh openWRT/
+      - name: 📋 复制 .config 和 diy360t7.sh 到源码目录
+        run: cp -f .config diy360t7.sh openWRT/
 
       - name: 📂 复制 files 目录 (可选)
         if: ${{ inputs.isFiles == true }}
         run: cp -r files openWRT/files
 
-      # ========== 6. 执行 diy.sh ==========
-      - name: 🔧 执行 diy.sh (加载360T7配置 + 安装插件)
+      # ========== 6. 执行 diy360t7.sh ==========
+      - name: 🔧 执行 diy360t7.sh (加载360T7配置 + 安装插件)
         working-directory: openWRT
         run: |
-          chmod +x diy.sh
-          ./diy.sh
+          chmod +x diy360t7.sh
+          ./diy360t7.sh
 
       # ========== 7. 更新 feeds ==========
       - name: 📡 更新并安装 feeds
