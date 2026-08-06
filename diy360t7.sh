@@ -42,11 +42,6 @@ sed -i "s/DISTRIB_DESCRIPTION='ImmortalWrt'/DISTRIB_DESCRIPTION='360T7-WRT 24.10
 echo ">>> 设置 Argon 为默认主题..."
 sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile
 
-# ========== 5. 第三方 feeds（iStore 必须用 feed） ==========
-echo ">>> 添加第三方 feeds..."
-grep -q "src-git istore" feeds.conf.default || \
-echo 'src-git istore https://github.com/linkease/istore;main' >> feeds.conf.default
-
 # ========== 6. 克隆第三方插件 ==========
 echo ">>> 克隆第三方插件..."
 
@@ -107,46 +102,6 @@ CONFIG_PACKAGE_luci-app-harbor-file=y
 CONFIG_PACKAGE_luci-i18n-harbor-file-zh-cn=y
 
 EOF
-
-# ========== 9. uci-defaults（开机即完美） ==========
-
-# Argon 兜底（防止首次启动回退 bootstrap）
-mkdir -p files/etc/uci-defaults
-cat > files/etc/uci-defaults/99-argon << 'EOF'
-#!/bin/sh
-uci set luci.main.mediaurlbase='/luci-static/argon'
-uci commit luci
-exit 0
-EOF
-chmod +x files/etc/uci-defaults/99-argon
-
-# 锁定 bootstrap（防止 opkg 切换主题）
-mkdir -p files/etc/opkg
-cat > files/etc/opkg/intercept.conf << 'EOF'
-arch all 100
-arch noarch 200
-hold luci-theme-bootstrap
-EOF
-
-# 时区 & NTP
-cat > files/etc/uci-defaults/99-timezone << 'EOF'
-#!/bin/sh
-uci set system.system.timezone='CST-8'
-uci set system.system.zonename='Asia/Shanghai'
-uci set system.ntp.server='ntp.aliyun.com' 'cn.pool.ntp.org' 'time.apple.com'
-uci commit system
-exit 0
-EOF
-chmod +x files/etc/uci-defaults/99-timezone
-
-# 启用 ttyd
-cat > files/etc/uci-defaults/99-ttyd << 'EOF'
-#!/bin/sh
-uci set ttyd.@ttyd[0].enabled='1'
-uci commit ttyd
-exit 0
-EOF
-chmod +x files/etc/uci-defaults/99-ttyd
 
 # ========== 10. 最终 defconfig ==========
 echo ">>> 执行 defconfig..."
