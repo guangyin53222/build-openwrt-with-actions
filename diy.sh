@@ -32,7 +32,7 @@ fi
 
 # ========== 2. 修改默认 LAN IP ==========
 echo ">>> 设置默认 LAN IP 为 192.168.6.1..."
-sed -i 's/192.168.1.1/192.168.6.1/g' package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.100.1/g' package/base-files/files/bin/config_generate
 
 # ========== 3. 修改默认主题为 Argon ==========
 echo ">>> 设置默认主题为 Argon..."
