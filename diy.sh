@@ -44,7 +44,7 @@ sed -i 's/ImmortalWrt/360T7-WRT/g' package/base-files/files/bin/config_generate
 
 # ========== 5. 添加第三方软件源 ==========
 echo ">>> 添加第三方软件源..."
-echo 'src-git UA3F https://github.com/SunBK201/UA3F.git' >> feeds.conf.default
+#echo 'src-git UA3F https://github.com/SunBK201/UA3F.git' >> feeds.conf.default
 
 # ========== 6. 克隆第三方插件 ==========
 echo ">>> 克隆第三方插件..."
@@ -71,6 +71,9 @@ rm -rf tmp/openwrt-app-actions
 rm -rf package/luci-app-tcpdump
 git clone https://github.com/KFERMercer/luci-app-tcpdump.git package/luci-app-tcpdump
 
+# Harbor File 文件管理器（2026 活跃维护）
+rm -rf package/luci-app-harbor-file
+git clone --depth=1 https://github.com/destan19/luci-app-harbor-file package/luci-app-harbor-file
 # ========== 7. 更新并安装 feeds ==========
 echo ">>> 更新并安装 feeds..."
 ./scripts/feeds update -a
