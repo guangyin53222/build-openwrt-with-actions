@@ -12,7 +12,7 @@ echo ">>> 雅典娜 RE-CS-02 NSS + 插件 diy.sh"
 sed -i 's/192.168.1.1/192.168.68.1/g' package/base-files/files/bin/config_generate
 
 # 2. 主机名
-sed -i "s/hostname='OpenWrt'/hostname='Athena-NSS'/g" package/base-files/files/bin/config_generate
+sed -i "s/hostname='OpenWrt'/hostname='RE-CS-02'/g" package/base-files/files/bin/config_generate
 
 # 3. 默认 root 密码 athena（⚠️ 占位 hash，请本地生成真 hash 替换）
 #    生成命令: echo -n '你的密码' | openssl passwd -5 -stdin
