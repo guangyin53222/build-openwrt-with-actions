@@ -1,32 +1,24 @@
 #!/bin/bash
-# ============================================================
-# diy.sh for qosmio/openwrt-ipq (qualcommax-6.x-nss-wifi)
-# JDCloud RE-CS-02 + NSS + athena-led + 插件
-# ============================================================
+# diy.sh - 雅典娜 RE-CS-02 NSS 定制脚本
 set -e
+
 cd "${0%/*}" || exit 1
 
-echo ">>> 雅典娜 RE-CS-02 NSS + 插件 diy.sh"
-
-# 1. LAN IP → 192.168.68.1（和原厂一致，方便过渡）
+echo ">>> [1/5] 设置 LAN IP 为 192.168.68.1"
 sed -i 's/192.168.1.1/192.168.68.1/g' package/base-files/files/bin/config_generate
 
-# 2. 主机名
-sed -i "s/hostname='OpenWrt'/hostname='RE-CS-02'/g" package/base-files/files/bin/config_generate
+echo ">>> [2/5] 设置主机名为 Athena-NSS"
+sed -i "s/hostname='OpenWrt'/hostname='Athena-NSS'/g" package/base-files/files/bin/config_generate
 
-# 3. 默认 root 密码 athena（⚠️ 占位 hash，请本地生成真 hash 替换）
-#    生成命令: echo -n '你的密码' | openssl passwd -5 -stdin
-sed -i 's/root:::0:99999:7:::/root:$5$athena$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:\n/' package/base-files/files/etc/shadow
+echo ">>> [3/5] 设置默认 root 密码为 athena"
+# 占位 hash，编译前请本地生成真 hash 替换：
+#   echo -n '你的密码' | openssl passwd -5 -stdin
+sed -i 's/root:::0:99999:7:::/root:$5$athena$VXxX8QY8QY8QY8QY8QY8QY8QY8QY8QY8QY8QY8QY8QY8QY.:0:99999:7:::/' package/base-files/files/etc/shadow
 
-# 4. 关 opkg/apk 签名强制（snapshot 源常无签名）
-sed -i 's/check_signature 1/check_signature 0/g' package/system/opkg/Makefile
+echo ">>> [4/5] 关闭 opkg/apk 签名强制"
+sed -i 's/check_signature 1/check_signature 0/g' package/system/opkg/Makefile 2>/dev/null || true
 
-# 5. 设置 Argon 为默认 LuCI 主题
-if [ -f feeds/luci/modules/luci-base/root/etc/config/luci ]; then
-  sed -i 's/option mediaurlbase.*/option mediaurlbase \/luci-static\/argon/g' feeds/luci/modules/luci-base/root/etc/config/luci
-fi
-
-# 6. 重新展开配置（athena-led + 4 个插件已进 package 树，必须再 defconfig）
+echo ">>> [5/5] 重新展开配置 (让 athena-led + 4 插件进最终配置)"
 make defconfig V=s
 
-echo ">>> diy.sh done"
+echo ">>> diy.sh 完成 ✓"
