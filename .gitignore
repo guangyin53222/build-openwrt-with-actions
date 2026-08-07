@@ -1,1 +1,6 @@
-files/*
+openWRT/
+*.o
+*.bin
+*.img
+*.tar.gz
+.DS_Store
