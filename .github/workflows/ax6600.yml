@@ -1,28 +1,8 @@
-name: 🚀 编译 qosmio NSS (JDCloud RE-CS-02 + Athena LED)
+name: Build qosmio NSS (RE-CS-02 + Athena LED + Plugins)
 
 on:
   workflow_dispatch:
     inputs:
-      owner:
-        description: "源码拥有者"
-        type: string
-        required: true
-        default: "qosmio"
-      repo:
-        description: "源码仓库"
-        type: string
-        required: true
-        default: "openwrt-ipq"
-      branch:
-        description: "源码分支"
-        type: choice
-        required: true
-        # 【关键】改为 qosmio 现存的分支名，-6.9 是目前 IPQ6010 最稳的选择
-        default: "qualcommax-6.x-nss-wifi-6.9"
-        options:
-          - "qualcommax-6.x-nss-wifi-6.6"   # 较老 LTS 内核，稳定性极高
-          - "qualcommax-6.x-nss-wifi-6.9"   # 推荐：回退 mac80211 的稳定分支（雅典娜常用）
-          - "qualcommax-6.x-nss-wifi-ovs"   # 带 OVS 支持的分支
       multithreading:
         description: "开启多线程编译"
         type: boolean
@@ -37,24 +17,16 @@ on:
         default: true
 
 env:
-  REPO_URL: https://github.com/${{ inputs.owner }}/${{ inputs.repo }}
-  # 【关键】Env 兜底，防止其他地方硬编码旧分支名
-  REPO_BRANCH: ${{ github.event.inputs.branch || 'qualcommax-6.x-nss-wifi-6.9' }}
-  CONFIG_FILE: .config
-  DIY_SH: diy.sh
   TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    name: 🚀 Build RE-CS-02 NSS
     steps:
-      - name: Before freeing up disk space
-        run: |
-          echo "Before freeing up disk space"
-          df -hT
+      - name: 1. Checkout 当前仓库 (.config / diy.sh / files)
+        uses: actions/checkout@v4
 
-      - name: Optimize Disk Space
+      - name: 2. 释放磁盘空间
         uses: hugoalh/disk-space-optimizer-ghaction@v0.8.1
         with:
           operate_sudo: "True"
@@ -70,7 +42,7 @@ jobs:
           apt_prune: "True"
           apt_clean: "True"
 
-      - name: Maximize build space
+      - name: 3. 最大化磁盘空间
         uses: easimon/maximize-build-space@master
         with:
           root-reserve-mb: 3072
@@ -81,41 +53,48 @@ jobs:
           remove-codeql: "true"
           remove-docker-images: "true"
 
-      - name: Install deps (incl. Rust for athena-led)
+      - name: 4. 安装编译依赖 (含 Rust)
         run: |
-          export TMPDIR=$RUNNER_TEMP
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+          set -e
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends ack antlr3 asciidoc autoconf automake autopoint \
-            binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex \
-            gawk gettext gcc-multilib g++-multilib git gperf intltool libelf-dev libncurses5-dev libssl-dev \
-            libtool lrzsz python3 python3-pip rsync scons squashfs-tools subversion swig texinfo unzip vim \
-            wget xmlto zlib1g-dev zstd
-          # Rust 工具链（athena-led 核心守护进程是 Rust）
+          sudo apt-get install -y --no-install-recommends \
+            ack antlr3 asciidoc autoconf automake autopoint \
+            binutils bison build-essential bzip2 ccache cmake cpio curl \
+            device-tree-compiler fastjar flex gawk gettext gcc-multilib \
+            g++-multilib git gperf intltool libelf-dev libncurses5-dev \
+            libssl-dev libtool lrzsz python3 python3-pip rsync scons \
+            squashfs-tools subversion swig texinfo unzip vim wget \
+            xmlto zlib1g-dev zstd
+          # Rust 工具链 (athena-led 核心)
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          sudo apt-get clean
+          source "$HOME/.cargo/env"
+          rustc --version
+          cargo --version
 
-      - name: Checkout current repo (config/diy/files)
-        uses: actions/checkout@v4
-
-      - name: Checkout qosmio/openwrt-ipq
+      - name: 5. Checkout qosmio/openwrt-ipq (写死分支)
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.REPO_URL }}
-          ref: ${{ env.REPO_BRANCH }}
+          repository: qosmio/openwrt-ipq
+          ref: qualcommax-6.x-nss-wifi-6.9
           path: openWRT
 
-      - name: Copy .config / diy.sh into source
-        run: cp -f .config diy.sh openWRT/
+      - name: 6. 复制 .config 和 diy.sh 进源码
+        run: |
+          cp -f .config diy.sh openWRT/
 
-      - name: Copy files/ if enabled
+      - name: 7. 复制 files/ (如果启用)
         if: ${{ inputs.isFiles == true }}
-        run: cp -r files openWRT/files
+        run: |
+          cp -r files openWRT/files
 
-      # ===== 方式 B：在 make defconfig 前把 athena-led 挂进 package/ =====
-      - name: Clone athena-led (unraveloop) into package/athena/
+      - name: 8. feeds update + install
+        working-directory: openWRT
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: 9. 克隆 athena-led (点阵屏驱动)
         working-directory: openWRT
         run: |
           mkdir -p package/athena
@@ -126,59 +105,63 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      # ===== 克隆额外 LuCI 插件（iStore / OpenAppFilter / Gecoos / Harbor）=====
-      - name: Clone extra LuCI plugins
+      - name: 10. 克隆额外插件 (iStore/OAF/Gecoos/Harbor)
         working-directory: openWRT
         run: |
-          echo ">>> 克隆第三方插件..."
-
           # iStore 应用商店
-          rm -rf package/luci-app-store
           git clone --depth=1 https://github.com/linkease/istore.git package/luci-app-store
 
-          # OpenAppFilter（锁 v6.1.8 tag）
-          rm -rf package/OpenAppFilter
+          # OpenAppFilter v6.1.8
           git clone --depth=1 --branch v6.1.8 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
 
           # Gecoos AC 控制器
-          rm -rf package/luci-app-gecoosac
           git clone --depth=1 https://github.com/laipeng668/luci-app-gecoosac.git package/luci-app-gecoosac
 
           # Harbor File 文件管理器
-          rm -rf package/luci-app-harbor-file
           git clone --depth=1 https://github.com/destan19/luci-app-harbor-file.git package/luci-app-harbor-file
 
-          # 重新扫包，让新加的插件进 Kconfig 树
+          # 重新扫包
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Run diy.sh
+      - name: 11. 运行 diy.sh (sed 定制 + make defconfig)
         working-directory: openWRT
         run: |
           chmod +x diy.sh
           ./diy.sh
 
-      # diy.sh 里会再 make defconfig 一次，让所有插件进最终配置
-      - name: SSH debug
+      - name: 12. 验证关键包已选入配置
+        working-directory: openWRT
+        run: |
+          echo "=== 验证 NSS ==="
+          grep -E "CONFIG_TARGET_qualcommax|^CONFIG_PACKAGE_kmod-qca-nss" .config | head -5
+          echo "=== 验证 athena-led ==="
+          grep -E "athena-led|luci-app-athena" .config
+          echo "=== 验证 4 个插件 ==="
+          grep -E "luci-app-store|luci-app-openappfilter|luci-app-gecoosac|luci-app-harbor" .config
+          echo "=== 验证 Rust ==="
+          grep "CONFIG_RUST" .config
+
+      - name: 13. SSH 调试 (可选)
         if: ${{ inputs.ssh == true }}
         uses: mxschmitt/action-tmate@v3
 
-      - name: Build (multithread)
+      - name: 14. 编译 (多线程)
         if: ${{ inputs.multithreading == true }}
         working-directory: openWRT
         run: |
           make download -j$(nproc)
           make -j$(nproc) V=s
 
-      - name: Build (single thread)
+      - name: 15. 编译 (单线程)
         if: ${{ inputs.multithreading == false }}
         working-directory: openWRT
         run: |
           make download -j1
           make -j1 V=s
 
-      - name: Upload artifact
+      - name: 16. 上传固件
         uses: actions/upload-artifact@v4
         with:
-          name: re-cs-02-nss-athena
+          name: re-cs-02-nss-athena-full
           path: openWRT/bin/targets/qualcommax/ipq60xx/*.bin
