@@ -5,187 +5,7 @@ on:
     inputs:
       owner:
         description: "源码拥有者"
-        type: stringname: 🚀 编译 qosmio NSS (JDCloud RE-CS-02 + Athena LED + 插件)
-
-on:
-  workflow_dispatch:
-    inputs:
-      owner:
-        description: "源码拥有者"
         type: string
-        required: true
-        default: "qosmio"
-      repo:
-        description: "源码仓库"
-        type: string
-        required: true
-        default: "openwrt-ipq"
-      branch:
-        description: "源码分支"
-        type: string
-        required: true
-        default: "qualcommax-6.x-nss-wifi"
-      multithreading:
-        description: "开启多线程编译"
-        type: boolean
-        default: true
-      ssh:
-        description: "SSH 连接编译环境"
-        type: boolean
-        default: false
-      isFiles:
-        description: "使用 files 大法"
-        type: boolean
-        default: true
-
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-    name: 🚀 Build RE-CS-02 NSS
-    steps:
-      - name: Before freeing up disk space
-        run: |
-          echo "Before freeing up disk space"
-          df -hT
-
-      - name: Optimize Disk Space
-        uses: hugoalh/disk-space-optimizer-ghaction@v0.8.1
-        with:
-          operate_sudo: "True"
-          general_include: ".+"
-          general_exclude: |-
-            ^GCC$
-            ^G\+\+$
-            Clang
-            LLVM
-          docker_include: ".+"
-          docker_prune: "True"
-          docker_clean: "True"
-          apt_prune: "True"
-          apt_clean: "True"
-
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 3072
-          swap-size-mb: 1024
-          remove-dotnet: "true"
-          remove-android: "true"
-          remove-haskell: "true"
-          remove-codeql: "true"
-          remove-docker-images: "true"
-
-      - name: Install deps (incl. Rust for athena-led)
-        run: |
-          export TMPDIR=$RUNNER_TEMP
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/*
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends ack antlr3 asciidoc autoconf automake autopoint \
-            binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex \
-            gawk gettext gcc-multilib g++-multilib git gperf intltool libelf-dev libncurses5-dev libssl-dev \
-            libtool lrzsz python3 python3-pip rsync scons squashfs-tools subversion swig texinfo unzip vim \
-            wget xmlto zlib1g-dev zstd
-          # Rust 工具链（athena-led 核心守护进程是 Rust）
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          sudo apt-get clean
-
-      - name: Checkout current repo (config/diy/files)
-        uses: actions/checkout@v4
-
-      - name: Checkout qosmio/openwrt-ipq
-        uses: actions/checkout@v4
-        with:
-          repository: "${{inputs.owner}}/${{inputs.repo}}"
-          ref: ${{inputs.branch}}
-          path: openWRT
-
-      - name: Copy .config / diy.sh into source
-        run: cp -f .config diy.sh openWRT/
-
-      - name: Copy files/ if enabled
-        if: ${{inputs.isFiles == true}}
-        run: cp -r files openWRT/files
-
-      # ===== 方式 B：在 make defconfig 前把 athena-led 挂进 package/ =====
-      - name: Clone athena-led (unraveloop) into package/athena/
-        working-directory: openWRT
-        run: |
-          mkdir -p package/athena
-          git clone --depth 1 https://github.com/unraveloop/JDC-AX6600-Athena-LED-Controller.git /tmp/athena_src
-          cp -r /tmp/athena_src/athena-led package/athena/athena-led
-          cp -r /tmp/athena_src/luci-app-athena-led package/athena/luci-app-athena-led
-          rm -rf /tmp/athena_src
-
-      # ===== 克隆第三方插件（iStore / OpenAppFilter / Gecoos AC / Harbor File）=====
-      - name: Clone extra LuCI plugins
-        working-directory: openWRT
-        run: |
-          echo ">>> 克隆第三方插件..."
-
-          # iStore
-          rm -rf package/luci-app-store
-          git clone --depth=1 https://github.com/linkease/istore.git package/luci-app-store
-
-          # OpenAppFilter（锁 v6.1.8 tag）
-          rm -rf package/OpenAppFilter
-          git clone --depth=1 --branch v6.1.8 https://github.com/destan19/OpenAppFilter package/OpenAppFilter
-
-          # Gecoos AC
-          rm -rf package/luci-app-gecoosac
-          git clone --depth=1 https://github.com/laipeng668/luci-app-gecoosac package/luci-app-gecoosac
-
-          # Harbor File
-          rm -rf package/luci-app-harbor-file
-          git clone --depth=1 https://github.com/destan19/luci-app-harbor-file package/luci-app-harbor-file
-
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-
-      - name: Run diy.sh
-        working-directory: openWRT
-        run: |
-          chmod +x diy.sh
-          ./diy.sh
-
-      # diy.sh 里会再 make defconfig 一次，让所有插件进最终配置
-      - name: Verify packages in config
-        working-directory: openWRT
-        run: |
-          echo "===== 关键包勾选检查 ====="
-          for p in athena-led luci-app-athena-led luci-app-store luci-app-openappfilter luci-app-gecoosac luci-app-harbor-file; do
-            if grep -q "CONFIG_PACKAGE_${p}=y" .config; then
-              echo "✅ $p"
-            else
-              echo "❌ $p NOT FOUND in .config"
-            fi
-          done
-
-      - name: SSH debug
-        if: ${{inputs.ssh == true}}
-        uses: mxschmitt/action-tmate@v3
-
-      - name: Build (multithread)
-        if: ${{inputs.multithreading == true}}
-        working-directory: openWRT
-        run: |
-          make download -j$(nproc)
-          make -j$(nproc) V=s
-
-      - name: Build (single thread)
-        if: ${{inputs.multithreading == false}}
-        working-directory: openWRT
-        run: |
-          make download -j1
-          make -j1 V=s
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: re-cs-02-nss-full
-          path: openWRT/bin/targets/qualcommax/ipq60xx/*.bin
-
         required: true
         default: "qosmio"
       repo:
@@ -214,7 +34,7 @@ jobs:
       isFiles:
         description: "使用 files 大法"
         type: boolean
-        default: false
+        default: true
 
 env:
   REPO_URL: https://github.com/${{ inputs.owner }}/${{ inputs.repo }}
@@ -306,13 +126,39 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      # ===== 克隆额外 LuCI 插件（iStore / OpenAppFilter / Gecoos / Harbor）=====
+      - name: Clone extra LuCI plugins
+        working-directory: openWRT
+        run: |
+          echo ">>> 克隆第三方插件..."
+
+          # iStore 应用商店
+          rm -rf package/luci-app-store
+          git clone --depth=1 https://github.com/linkease/istore.git package/luci-app-store
+
+          # OpenAppFilter（锁 v6.1.8 tag）
+          rm -rf package/OpenAppFilter
+          git clone --depth=1 --branch v6.1.8 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
+
+          # Gecoos AC 控制器
+          rm -rf package/luci-app-gecoosac
+          git clone --depth=1 https://github.com/laipeng668/luci-app-gecoosac.git package/luci-app-gecoosac
+
+          # Harbor File 文件管理器
+          rm -rf package/luci-app-harbor-file
+          git clone --depth=1 https://github.com/destan19/luci-app-harbor-file.git package/luci-app-harbor-file
+
+          # 重新扫包，让新加的插件进 Kconfig 树
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
       - name: Run diy.sh
         working-directory: openWRT
         run: |
           chmod +x diy.sh
           ./diy.sh
 
-      # diy.sh 里会再 make defconfig 一次，让 athena-led 进最终配置
+      # diy.sh 里会再 make defconfig 一次，让所有插件进最终配置
       - name: SSH debug
         if: ${{ inputs.ssh == true }}
         uses: mxschmitt/action-tmate@v3
